@@ -1,6 +1,8 @@
 # This file contains a function to gather data from the connected Witmotion WT901C-TTl IMU sensor.
 import serial
 import time
+import datetime
+import csv    
 
 # WT901 setup:
 print("Setting up WT901...")
@@ -13,6 +15,10 @@ ser.bytesize = 8
 ser.timeout = 1
 ser.open()
 time.sleep(2)
+
+CSV_PATH = "imu_log.csv"
+_csv_file = open(CSV_PATH, "a", newline="")  # append so we never overwrite
+_csv_writer = None  # will be created after first frame so we know the keys
 
 # This function is to be called continuously in a separate function via a while or for loop.
 def getIMUData():
@@ -181,7 +187,11 @@ def getIMUData():
 	Hy = format(Hy, "4.0f")
 	Hz = format(Hz, "4.0f")
 
+	timestamp = time.time()
+	readable_time = datetime.datetime.fromtimestamp(timestamp).isoformat()
+
 	IMU_Data = {
+		"timestamp": timestamp, "readable_time": readable_time,
 		"Ax": Ax, "Ay": Ay, "Az": Az,
 		"Wx": Wx, "Wy": Wy, "Wz": Wz,
 		"Roll": Roll, "Pitch": Pitch, "Yaw": Yaw,
@@ -190,6 +200,34 @@ def getIMUData():
 	#print(IMU_Data)
 	return IMU_Data
 
-# This is an example loop.
-while True:
-	getIMUData()
+data_series = []
+
+try:
+    while True:
+        t0 = time.time()
+        data = getIMUData()
+        data_series.append(data)
+
+        # Lazy-initialise the CSV writer the first time we have a dict ----------
+        if _csv_writer is None:
+            _csv_writer = csv.DictWriter(_csv_file, fieldnames=data.keys())
+            if _csv_file.tell() == 0:  # empty file → add header
+                _csv_writer.writeheader()
+
+        _csv_writer.writerow(data)
+        _csv_file.flush()  # avoid data loss on unexpected shutdown
+
+        # Console preview (optional) – comment out if you like
+        print(data)
+
+        # Enforce 0.5-second sample period ------------------------------------
+        elapsed = time.time() - t0
+        if elapsed < 0.5:
+            time.sleep(0.5 - elapsed)
+
+except KeyboardInterrupt:
+    print("\nLogging stopped by user. CSV saved to", CSV_PATH)
+finally:
+    _csv_file.close()
+    ser.close()
+
