@@ -216,8 +216,6 @@ try:
         _csv_writer.writerow(data)
         _csv_file.flush() 
 
-        print(data)
-
         elapsed = time.time() - t0
         if elapsed < 0.5:
             time.sleep(0.5 - elapsed)
