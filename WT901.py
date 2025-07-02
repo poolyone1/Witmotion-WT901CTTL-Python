@@ -223,7 +223,7 @@ try:
             time.sleep(0.5 - elapsed)
 
 except KeyboardInterrupt:
-    print("\nLogging stopped by user. CSV saved to", CSV_PATH)
+    print("\nStopped", CSV_PATH)
 finally:
     _csv_file.close()
     ser.close()
